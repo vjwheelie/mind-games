@@ -1,6 +1,8 @@
 # Mind Games
 
-Five logic games and a stats dashboard. They run entirely in your browser, with no installs.
+Five bite-sized logic puzzles: crack codes, break words, light grids, climb ladders. No sign-up, no ads, just clues, deduction, and a dashboard that remembers every win.
+
+Everything runs in your browser, with no installs.
 
 ## Play
 
