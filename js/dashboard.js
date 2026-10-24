@@ -8,7 +8,7 @@ const Dashboard = (() => {
   const guessGame = (mod, desc) => ({
     mod, desc,
     chartTitle: "Guess distribution",
-    extra: (s) => ["Avg guesses", s.wins.length ? (s.wins.reduce((a, g) => a + g.guesses, 0) / s.wins.length).toFixed(1) : "–"],
+    extra: (s) => ["Avg",s.wins.length ? (s.wins.reduce((a, g) => a + g.guesses, 0) / s.wins.length).toFixed(1) : "–"],
     rows: (s) => Array.from({ length: mod.maxGuesses }, (_, i) => {
       const n = s.wins.filter((g) => g.guesses === i + 1).length;
       return { key: String(i + 1), n, tip: `Won in ${i + 1} ${i ? "guesses" : "guess"}: ${plural(n, "game")}` };
@@ -49,6 +49,18 @@ const Dashboard = (() => {
     parGame(LightsOut, "Every press flips a light and its neighbors. Get them all off in as few presses as possible.", "move"),
     parGame(WordLadder, "Climb from one word to another, changing a single letter each step.", "step"),
   ];
+  // Each game's neon identity color and a small icon hinting at how it plays (drawn in that color).
+  const LOOK = {
+    "code-breaker": { color: "#ff5d73", icon: `<circle cx="4.5" cy="12" r="2.6" fill="currentColor"/><circle cx="11" cy="12" r="2.6" fill="currentColor"/>
+      <circle cx="17.5" cy="12" r="2.6" fill="currentColor" opacity=".55"/><circle cx="21" cy="5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/>` },
+    "word-breaker": { color: "#3ddc97", icon: `<rect x="1.5" y="7.5" width="6" height="9" rx="1.5" fill="currentColor"/>
+      <rect x="9" y="7.5" width="6" height="9" rx="1.5" fill="currentColor" opacity=".55"/><rect x="16.5" y="7.5" width="6" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>` },
+    "nonogram": { color: "#4cc9f0", icon: [0, 1, 2].flatMap((r) => [0, 1, 2].map((c) =>
+      `<rect x="${3 + c * 6.5}" y="${3 + r * 6.5}" width="5" height="5" rx="1" fill="currentColor" opacity="${[1, 0.25, 1, 1, 1, 0.25, 0.25, 1, 0.25][r * 3 + c]}"/>`)).join("") },
+    "lights-out": { color: "#ffd23f", icon: `<rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="3" y="13" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/>` },
+    "word-ladder": { color: "#b388ff", icon: `<path d="M6 2v20M18 2v20M6 6h12M6 12h12M6 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>` },
+  };
   const byId = Object.fromEntries(GAMES.map((g) => [g.mod.id, g.mod]));
   let confirmingReset = false;
 
@@ -68,9 +80,9 @@ const Dashboard = (() => {
     return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  function tile(label, value, note = "") {
+  function tile(label, value, note = "", noteClass = "") {
     return `<div class="tile-stat"><div class="label">${label}</div><div class="value">${value}</div>
-            <div class="note">${note}</div></div>`;
+            <div class="note ${noteClass}">${note}</div></div>`;
   }
 
   function chart(game, s) {
@@ -83,8 +95,8 @@ const Dashboard = (() => {
       const pct = Math.round((r.n / s.played) * 100);
       return `<div class="dist-row${r.lost ? " lost" : ""}" tabindex="0" data-tip="${r.tip} (${pct}% of games)" aria-label="${r.tip}">
         <span class="k">${r.key}</span>
-        <span class="track"><span class="bar" style="width: calc((100% - 34px) * ${r.n / max})"></span>
-        <span class="count">${r.n}</span></span></div>`;
+        <span class="track"><span class="bar" style="width: ${(r.n / max) * 100}%"></span></span>
+        <span class="count">${r.n}</span></div>`;
     }).join("") + `</div>`;
   }
 
@@ -93,15 +105,19 @@ const Dashboard = (() => {
     const s = Stats.summary(mod.id);
     const [extraLabel, extraValue] = game.extra(s);
     const stat = (v, l) => `<div><div class="v">${v}</div><div class="l">${l}</div></div>`;
-    return `<section class="card">
-      <div class="card-head"><h2>${mod.title}</h2><a class="btn primary" href="#/${mod.id}">Play</a></div>
-      <p class="card-desc">${desc}</p>
-      <div class="mini-stats">
-        ${stat(s.played, "Played")}${stat(s.played ? s.winRate + "%" : "–", "Win rate")}
-        ${stat(s.streak, "Streak")}${stat(s.bestStreak, "Best streak")}${stat(extraValue, extraLabel)}
+    const look = LOOK[mod.id];
+    return `<section class="card" style="--game:${look.color}">
+      <div class="card-head">
+        <div class="game-icon" style="color:${look.color}"><svg viewBox="0 0 24 24" aria-hidden="true">${look.icon}</svg></div>
+        <a class="btn primary" href="#/${mod.id}">Play</a>
       </div>
-      ${chart(game, s)}
-      <div class="note" style="color:var(--muted);font-size:0.82rem;margin-top:auto">Fastest win: ${formatTime(s.fastest)}</div>
+      <div><h2>${mod.title}</h2><p class="card-desc">${desc}</p></div>
+      <div class="mini-stats">
+        ${stat(s.played, "Played")}${stat(s.played ? s.winRate + "%" : "–", "Win %")}
+        ${stat(s.streak, "Streak")}${stat(s.bestStreak, "Best")}${stat(extraValue, extraLabel)}
+      </div>
+      <div>${chart(game, s)}</div>
+      <div class="fastest">Fastest win: ${formatTime(s.fastest)}</div>
     </section>`;
   }
 
@@ -113,9 +129,9 @@ const Dashboard = (() => {
       return `<tr>
         <td>${mod?.title || g.game}</td>
         <td class="${g.won ? "result-won" : "result-lost"}">${g.won ? "✓ Won" : "✕ Lost"}</td>
-        <td>${mod?.describe ? mod.describe(g) : ""}</td>
+        <td class="score">${mod?.describe ? mod.describe(g) : ""}</td>
         <td class="num-col">${formatTime(g.ms)}</td>
-        <td>${formatWhen(g.at)}</td></tr>`;
+        <td class="when">${formatWhen(g.at)}</td></tr>`;
     }).join("");
     return `<div class="table-wrap"><table>
       <thead><tr><th>Game</th><th>Result</th><th>Score</th><th class="num-col">Time</th><th>When</th></tr></thead>
@@ -130,12 +146,14 @@ const Dashboard = (() => {
 
     el.innerHTML = `
       <div class="page wide">
-        <h1>Dashboard</h1>
-        <p class="sub">Your progress across all the games.</p>
+        <header class="dash-head">
+          <h1>Dashboard</h1>
+          <p class="sub">Five bite-sized logic puzzles. No sign-up, no ads — just clues, deduction, and a dashboard that remembers every win.</p>
+        </header>
         <div class="tiles">
           ${tile("Games played", all.length)}
-          ${tile("Wins", wins, all.length ? `${Math.round((wins / all.length) * 100)}% win rate` : "")}
-          ${tile("Best streak", bestStreak, "wins in a row, any game")}
+          ${tile("Wins", wins, all.length ? `${Math.round((wins / all.length) * 100)}% win rate` : "", "good")}
+          ${tile("Best streak", bestStreak, "wins in a row")}
           ${tile("Time thinking", formatTime(totalMs))}
         </div>
         <div class="cards">${GAMES.map(card).join("")}</div>
