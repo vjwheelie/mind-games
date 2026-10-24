@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mind Games</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">🧠 Mind Games</span>
+    <a href="#/">Dashboard</a>
+    <a href="#/code-breaker">Code Breaker</a>
+    <a href="#/word-breaker">Word Breaker</a>
+    <a href="#/nonogram">Nonogram</a>
+    <a href="#/lights-out">Lights Out</a>
+    <a href="#/word-ladder">Word Ladder</a>
+  </nav>
+  <div id="view"></div>
+
+  <script src="js/stats.js"></script>
+  <script src="js/words.js"></script>
+  <script src="js/words4.js"></script>
+  <script src="js/code-breaker.js"></script>
+  <script src="js/word-breaker.js"></script>
+  <script src="js/nonogram.js"></script>
+  <script src="js/lights-out.js"></script>
+  <script src="js/word-ladder.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script>
+    // Tiny hash router: #/ shows the dashboard, #/<game-id> shows that game.
+    const views = { "": Dashboard };
+    for (const game of Dashboard.games) views[game.id] = game;
+    let active = null;
+
+    function route() {
+      const name = location.hash.replace(/^#\/?/, "");
+      const view = views[name] || Dashboard;
+      active?.unmount?.();
+      active = view;
+      view.mount(document.getElementById("view"));
+      document.querySelectorAll("nav a").forEach((a) =>
+        a.classList.toggle("current", a.getAttribute("href").slice(2) === (views[name] ? name : "")));
+      document.title = view.title ? `${view.title} · Mind Games` : "Mind Games";
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches?.("input[type=text], textarea")) return;
+      active?.onKey?.(e);
+    });
+    window.addEventListener("hashchange", route);
+    route();
+  </script>
+</body>
+</html>
